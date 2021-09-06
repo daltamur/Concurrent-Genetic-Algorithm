@@ -49,7 +49,7 @@ public class main {
                         floorSpace[i][x]=0;
                         maxHolesLeft--;
 
-                    }else if(machinesPlaced>machines){
+                    }else if(machinesPlaced>machines||machines==0){
                         floorSpace[i][x]=0;
                         maxHolesLeft--;
 
@@ -69,7 +69,7 @@ public class main {
                             if(machinesPlaced<machines) {
                                 machinesPlaced++;
                             }
-                        }else if(machinesPlaced>machines){
+                        }else if(machinesPlaced>machines||machines==0){
                             floorSpace[i][x]=0;
                             maxHolesLeft--;
                         }
@@ -85,7 +85,7 @@ public class main {
                         if(random.nextBoolean()&&maxHolesLeft>0&&machines-machinesPlaced!=9-x){
                             floorSpace[i][x]=0;
                             maxHolesLeft--;
-                        }else if(machinesPlaced>machines){
+                        }else if(machinesPlaced>machines||machines==0){
                             floorSpace[i][x]=0;
                             maxHolesLeft--;
                         }
