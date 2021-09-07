@@ -56,17 +56,7 @@ public class main {
                             boolean turnToHole=random.nextBoolean();
                             //random number between 0 (reps a hole) and the amount of flavors
                             floorSpace[i][x]=random.nextInt(flavors)+1;
-                            if(turnToHole&& maxHolesLeft >0&&machines- machinesPlaced != spacesLeft){
-                                floorSpace[i][x]=0;
-                                maxHolesLeft--;
-
-                            }else if(machinesPlaced >=machines||machines==0){
-                                floorSpace[i][x]=0;
-                                maxHolesLeft--;
-
-                            }else {
-                                machinesPlaced++;
-                            }
+                            machinesPlaced++;
                             spacesLeft--;
                         }
                         if(i+1==rowAmount-1){
@@ -76,40 +66,33 @@ public class main {
                         if(remainderRow!=0) {
                             floorSpace[i] = new Integer[remainderRow];
                             for (int x = 0; x < remainderRow; x++) {
-                                boolean turnToHole=random.nextBoolean();
                                 //random number between 0 (reps a hole) and the amount of flavors
                                 floorSpace[i][x] = random.nextInt(flavors)+1;
                                 //will only make the hole if the random boolean is true and we can afford to add more holes
-                                if(turnToHole&& maxHolesLeft >0&&machines- machinesPlaced != spacesLeft){
-                                    floorSpace[i][x]=0;
-                                }else if(machinesPlaced >=machines||machines==0){
-                                    floorSpace[i][x]=0;
-                                    maxHolesLeft--;
-                                }else {
-                                    machinesPlaced++;
-                                }
-                                spacesLeft--;
+                                machinesPlaced++;
                             }
                         }else{
                             floorSpace[i] = new Integer[10];
                             for (int x = 0; x < 10; x++) {
-                                boolean turnToHole=random.nextBoolean();
                                 //random number between 0 (reps a hole) and the amount of flavors
                                 floorSpace[i][x] =random.nextInt(flavors)+1;
-                                if(turnToHole&& maxHolesLeft >0&&machines- machinesPlaced != spacesLeft){
-                                    floorSpace[i][x]=0;
-                                    maxHolesLeft--;
-                                }else if(machinesPlaced >=machines||machines==0){
-                                    floorSpace[i][x]=0;
-                                    maxHolesLeft--;
-                                }else {
-                                    machinesPlaced++;
-                                }
-                                spacesLeft--;
+                                machinesPlaced++;
                             }
                         }
                     }
                 }
+                ArrayList<Integer>filledSpaces=new ArrayList<>();
+                for(int i=maxHolesLeft;i>0;i--){
+                    int assignedSpace=random.nextInt(spaces);
+                    while(filledSpaces.contains(assignedSpace)){
+                        assignedSpace= random.nextInt(spaces);
+                    }
+                    filledSpaces.add(assignedSpace);
+                    int yAxis=assignedSpace/10;
+                    int xAxis=(assignedSpace%10)-1;
+                    floorSpace[yAxis][xAxis]=0;
+                }
+
                 synList.add(floorSpace);
             }
         };
