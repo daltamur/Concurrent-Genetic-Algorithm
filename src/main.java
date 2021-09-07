@@ -5,7 +5,7 @@ import java.util.concurrent.Executors;
 public class main {
     public static void main(String[] args){
         int cores = Runtime.getRuntime().availableProcessors();
-        //save 1 thread for ui
+        //save 1 thread for UI
         int coresForProcessing=cores-1;
         ExecutorService service= Executors.newFixedThreadPool(coresForProcessing);
         int rowAmount;
@@ -81,6 +81,8 @@ public class main {
                         }
                     }
                 }
+
+                //randomly put in holes based on how many holes needed, don't repeat places that holes went before.
                 ArrayList<Integer>filledSpaces=new ArrayList<>();
                 for(int i=maxHolesLeft;i>0;i--){
                     int assignedSpace=random.nextInt(spaces);
