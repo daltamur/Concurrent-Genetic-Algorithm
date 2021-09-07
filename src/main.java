@@ -10,6 +10,7 @@ public class main {
         int rowAmount;
         //the final row will hold the last of the spaces if need be, this number indicates how many spaces are in the row
         int remainderRow;
+        int spacesLeft;
         boolean onFinalRow=false;
         Random random=new Random();
         Scanner scanner=new Scanner(System.in);
@@ -34,6 +35,11 @@ public class main {
         int machinesPlaced=0;
         System.out.println(rowAmount);
         System.out.println(remainderRow);
+        if(remainderRow==0){
+            spacesLeft=10*rowAmount;
+        }else{
+            spacesLeft=((10*(rowAmount-1)))+remainderRow;
+        }
 
         Integer floorSpace[][]=new Integer[rowAmount][];
         for (int i=0;i<rowAmount;i++){
@@ -42,18 +48,18 @@ public class main {
                 for(int x=0;x<10;x++) {
                     //random number between 0 (reps a hole) and the amount of flavors
                     floorSpace[i][x]=random.nextInt(flavors)+1;
-                    if(machinesPlaced<machines) {
+                    if(random.nextBoolean()&&maxHolesLeft>0&&machines-machinesPlaced!=spacesLeft){
+                        floorSpace[i][x]=0;
+                        maxHolesLeft--;
+
+                    }else if(machinesPlaced>=machines||machines==0){
+                        floorSpace[i][x]=0;
+                        maxHolesLeft--;
+
+                    }else {
                         machinesPlaced++;
                     }
-                    if(random.nextBoolean()&&maxHolesLeft>0){
-                        floorSpace[i][x]=0;
-                        maxHolesLeft--;
-
-                    }else if(machinesPlaced>machines||machines==0){
-                        floorSpace[i][x]=0;
-                        maxHolesLeft--;
-
-                    }
+                    spacesLeft--;
                 }
                 if(i+1==rowAmount-1){
                     onFinalRow=true;
@@ -64,31 +70,31 @@ public class main {
                     for (int x = 0; x < remainderRow; x++) {
                         //random number between 0 (reps a hole) and the amount of flavors
                         floorSpace[i][x] = random.nextInt(flavors)+1;
-                        if(random.nextBoolean()&&maxHolesLeft>0&&machines-machinesPlaced!=(remainderRow-1)-x){
+                        if(random.nextBoolean()&&maxHolesLeft>0&&machines-machinesPlaced!=spacesLeft){
                             floorSpace[i][x]=0;
-                            if(machinesPlaced<machines) {
-                                machinesPlaced++;
-                            }
-                        }else if(machinesPlaced>machines||machines==0){
+                        }else if(machinesPlaced>=machines||machines==0){
                             floorSpace[i][x]=0;
                             maxHolesLeft--;
+                        }else {
+                            machinesPlaced++;
                         }
+                        spacesLeft--;
                     }
                 }else{
                     floorSpace[i] = new Integer[10];
                     for (int x = 0; x < 10; x++) {
                         //random number between 0 (reps a hole) and the amount of flavors
                         floorSpace[i][x] =random.nextInt(flavors)+1;
-                        if(machinesPlaced<machines) {
+                        if(random.nextBoolean()&&maxHolesLeft>0&&machines-machinesPlaced!=spacesLeft){
+                            floorSpace[i][x]=0;
+                            maxHolesLeft--;
+                        }else if(machinesPlaced>=machines||machines==0){
+                            floorSpace[i][x]=0;
+                            maxHolesLeft--;
+                        }else {
                             machinesPlaced++;
                         }
-                        if(random.nextBoolean()&&maxHolesLeft>0&&machines-machinesPlaced!=9-x){
-                            floorSpace[i][x]=0;
-                            maxHolesLeft--;
-                        }else if(machinesPlaced>machines||machines==0){
-                            floorSpace[i][x]=0;
-                            maxHolesLeft--;
-                        }
+                        spacesLeft--;
                     }
                 }
             }
