@@ -1,9 +1,12 @@
+import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class main {
     public static void main(String[] args){
+        Lock lock=new ReentrantLock();
         int cores = Runtime.getRuntime().availableProcessors();
         //save 1 thread for UI
         int coresForProcessing=cores-1;
@@ -11,7 +14,6 @@ public class main {
         int rowAmount;
         //the final row will hold the last of the spaces if need be, this number indicates how many spaces are in the row
         int remainderRow;
-        Random random=new Random();
         Scanner scanner=new Scanner(System.in);
         System.out.println("How many spaces?");
         int spaces=scanner.nextInt();
@@ -27,97 +29,84 @@ public class main {
             remainderRow=spaces%10;
         }
         //maximum amount of holes allowed, counts down to zero as holes are placed
-        //System.out.println(rowAmount);
-        //System.out.println(remainderRow);
         final List<Integer[][]> list= new ArrayList<>();
         final List<Integer[][]> synList=Collections.synchronizedList(list);
 
-        Runnable roomCreation=new Runnable() {
-            @Override
-            public void run() {
-                boolean onFinalRow=false;
-                if(spaces<=10){
-                    onFinalRow=true;
-                }
-                int spacesLeft=0;
-                int machinesPlaced=0;
-                int maxHolesLeft=spaces-machines;
-                if(remainderRow==0){
-                    spacesLeft =10*rowAmount;
-                }else{
-                    spacesLeft =((10*(rowAmount-1)))+remainderRow;
-                }
+        Runnable roomCreation= () -> {
+            boolean onFinalRow= spaces <= 10;
+            int maxHolesLeft=spaces-machines;
 
-                Integer floorSpace[][]=new Integer[rowAmount][];
-                for (int i=0;i<rowAmount;i++){
-                    if (!onFinalRow){
-                        floorSpace[i]=new Integer[10];
-                        for(int x=0;x<10;x++) {
-                            boolean turnToHole=random.nextBoolean();
+            Integer[][] floorSpace =new Integer[rowAmount][];
+            for (int i=0;i<rowAmount;i++){
+                if (!onFinalRow){
+                    floorSpace[i]=new Integer[10];
+                    for(int x=0;x<10;x++) {
+                        //random number between 0 (reps a hole) and the amount of flavors
+                        floorSpace[i][x]=ThreadLocalRandom.current().nextInt(1, flavors+1);
+                    }
+                    if(i+1==rowAmount-1){
+                        onFinalRow =true;
+                    }
+                }else{
+                    if(remainderRow!=0) {
+                        floorSpace[i] = new Integer[remainderRow];
+                        for (int x = 0; x < remainderRow; x++) {
                             //random number between 0 (reps a hole) and the amount of flavors
-                            floorSpace[i][x]=random.nextInt(flavors)+1;
-                            machinesPlaced++;
-                            spacesLeft--;
-                        }
-                        if(i+1==rowAmount-1){
-                            onFinalRow =true;
+                            floorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
+                            //will only make the hole if the random boolean is true and we can afford to add more holes
                         }
                     }else{
-                        if(remainderRow!=0) {
-                            floorSpace[i] = new Integer[remainderRow];
-                            for (int x = 0; x < remainderRow; x++) {
-                                //random number between 0 (reps a hole) and the amount of flavors
-                                floorSpace[i][x] = random.nextInt(flavors)+1;
-                                //will only make the hole if the random boolean is true and we can afford to add more holes
-                                machinesPlaced++;
-                            }
-                        }else{
-                            floorSpace[i] = new Integer[10];
-                            for (int x = 0; x < 10; x++) {
-                                //random number between 0 (reps a hole) and the amount of flavors
-                                floorSpace[i][x] =random.nextInt(flavors)+1;
-                                machinesPlaced++;
-                            }
+                        floorSpace[i] = new Integer[10];
+                        for (int x = 0; x < 10; x++) {
+                            //random number between 0 (reps a hole) and the amount of flavors
+                            floorSpace[i][x] =ThreadLocalRandom.current().nextInt(1, flavors+1);
                         }
                     }
                 }
+            }
 
-                //randomly put in holes based on how many holes needed, don't repeat places that holes went before.
-                ArrayList<Integer>filledSpaces=new ArrayList<>();
-                for(int i=maxHolesLeft;i>0;i--){
-                    int assignedSpace=random.nextInt(spaces);
-                    while(filledSpaces.contains(assignedSpace)){
-                        assignedSpace= random.nextInt(spaces);
-                    }
-                    filledSpaces.add(assignedSpace);
-                    int yAxis=assignedSpace/10;
-                    int xAxis=(assignedSpace%10)-1;
-                    floorSpace[yAxis][xAxis]=0;
+            //randomly put in holes based on how many holes needed, don't repeat places that holes went before.
+            ArrayList<Integer>filledSpaces=new ArrayList<>();
+            List<Integer> syncFilledSpaces=Collections.synchronizedList(filledSpaces);
+
+            for(int i=maxHolesLeft;i>0;i--){
+                int assignedSpace= ThreadLocalRandom.current().nextInt(0, spaces);
+                while(filledSpaces.contains(assignedSpace)){
+                    assignedSpace= ThreadLocalRandom.current().nextInt(0, spaces);
                 }
+                syncFilledSpaces.add(assignedSpace);
+                int yAxis=(assignedSpace/10);
+                int xAxis=(assignedSpace%10);
+                floorSpace[yAxis][xAxis]=0;
+            }
 
-                synList.add(floorSpace);
+            synList.add(floorSpace);
+            System.out.println(synList.size());
+            if(synList.size()==300){
+                lock.lock();
+                System.out.println("all done");
+                    floorSpace=synList.get(299);
+                    for(int i=0;i<rowAmount;i++){
+                        for(int x=0;x<floorSpace[i].length ;x++){
+                            System.out.print(floorSpace[i][x]+"|");
+                        }
+                        System.out.println("");
+                        System.out.println("________________________");
+                    }
+                lock.unlock();
+                System.out.println(synList.size());
             }
         };
-        for(int i=0;i<300;i++){
-            service.submit(roomCreation);
-        }
 
-        //System.out.println(fitnessMeasurment(floorSpace));
-        if(synList.size()<300){
-            Integer[][] floorSpace=synList.get(2);
-            for(int i=0;i<rowAmount;i++){
-                for(int x=0;x<floorSpace[i].length ;x++){
-                    System.out.print(floorSpace[i][x]+"|");
-                }
-                System.out.println("");
-                System.out.println("________________________");
-            }
+        for(int i=0;i<300;i++){
+            service.execute(roomCreation);
         }
+        //System.out.println(fitnessMeasurment(floorSpace));
+        System.out.println("yo");
         Integer[][] example={
                 {1,2,3,4,5,6,7,8,9}
         };
 
-        //System.out.println(fitnessMeasurment(example));
 
 
     }
