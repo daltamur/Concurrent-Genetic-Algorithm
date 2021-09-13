@@ -1,11 +1,12 @@
 import java.io.IOException;
+import java.lang.reflect.Member;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class main {
-    public static void main(String[] args){
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
         Lock lock=new ReentrantLock();
         int cores = Runtime.getRuntime().availableProcessors();
         //save 1 thread for UI
@@ -29,10 +30,11 @@ public class main {
             remainderRow=spaces%10;
         }
         //maximum amount of holes allowed, counts down to zero as holes are placed
-        final List<Integer[][]> list= new ArrayList<>();
-        final List<Integer[][]> synList=Collections.synchronizedList(list);
+        final List<member> list= new ArrayList<>();
+        final List<member> synList=Collections.synchronizedList(list);
 
-        Runnable roomCreation= () -> {
+        Callable<member> roomCreation= () -> {
+            member thisMember=new member();
             boolean onFinalRow= spaces <= 10;
             int maxHolesLeft=spaces-machines;
 
@@ -43,6 +45,7 @@ public class main {
                     for(int x=0;x<10;x++) {
                         //random number between 0 (reps a hole) and the amount of flavors
                         floorSpace[i][x]=ThreadLocalRandom.current().nextInt(1, flavors+1);
+                        thisMember.addLocation(x, i, floorSpace[i][x]);
                     }
                     if(i+1==rowAmount-1){
                         onFinalRow =true;
@@ -53,6 +56,7 @@ public class main {
                         for (int x = 0; x < remainderRow; x++) {
                             //random number between 0 (reps a hole) and the amount of flavors
                             floorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
+                            thisMember.addLocation(x, i, floorSpace[i][x]);
                             //will only make the hole if the random boolean is true and we can afford to add more holes
                         }
                     }else{
@@ -60,6 +64,7 @@ public class main {
                         for (int x = 0; x < 10; x++) {
                             //random number between 0 (reps a hole) and the amount of flavors
                             floorSpace[i][x] =ThreadLocalRandom.current().nextInt(1, flavors+1);
+                            thisMember.addLocation(x, i, floorSpace[i][x]);
                         }
                     }
                 }
@@ -77,38 +82,37 @@ public class main {
                 syncFilledSpaces.add(assignedSpace);
                 int yAxis=(assignedSpace/10);
                 int xAxis=(assignedSpace%10);
+                thisMember.removeValueFromHashmap(xAxis, yAxis, floorSpace[yAxis][xAxis]);
                 floorSpace[yAxis][xAxis]=0;
+                thisMember.addLocation(xAxis,yAxis,0);
             }
-
-            synList.add(floorSpace);
-            System.out.println(synList.size());
-            if(synList.size()==300){
-                lock.lock();
-                System.out.println("all done");
-                    floorSpace=synList.get(299);
-                    for(int i=0;i<rowAmount;i++){
-                        for(int x=0;x<floorSpace[i].length ;x++){
-                            System.out.print(floorSpace[i][x]+"|");
-                        }
-                        System.out.println("");
-                        System.out.println("________________________");
-                    }
-                lock.unlock();
-                System.out.println(synList.size());
-            }
+            thisMember.addRoom(floorSpace);
+            return thisMember;
         };
-
+        ArrayList<Future<member>> allFLoors=new ArrayList<>();
         for(int i=0;i<300;i++){
-            service.execute(roomCreation);
+            Future<member> thisFloor=service.submit(roomCreation);
+            allFLoors.add(thisFloor);
+            System.out.println(allFLoors.size());
         }
         //System.out.println(fitnessMeasurment(floorSpace));
-        System.out.println("yo");
-        Integer[][] example={
-                {1,2,3,4,5,6,7,8,9}
-        };
 
-
-
+        for(int i=0;i<300;i++){
+            Future<member> future=allFLoors.get(i);
+            member member=future.get();
+            Integer[][] thisFloor=member.getRoom();
+            if(i==299){
+                System.out.println("Final floor");
+            }
+            for(int y=0;y<rowAmount;y++){
+                for(int x=0;x<thisFloor[y].length ;x++){
+                    System.out.print(thisFloor[y][x]+"|");
+                }
+                System.out.println("");
+                System.out.println("________________________");
+            }
+            System.out.println("++++++++++++");
+        }
     }
 
     private static int fitnessMeasurment(Integer[][] floorSpace) {
