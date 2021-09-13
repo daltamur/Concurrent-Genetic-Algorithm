@@ -4,10 +4,10 @@ import java.util.HashMap;
 public class member {
     private Integer [][] floorSpace;
     private HashMap<Integer, ArrayList<Integer []>> valueLocations;
-    private int fitness;
+    private double fitness;
 
     public member() {
-        this.fitness=0;
+        this.fitness=0.0;
         this.valueLocations=new HashMap<>();
     }
 
@@ -22,8 +22,8 @@ public class member {
     }
 
 
-    public void changeFitness(int value){
-        fitness = value;
+    public void changeFitness(double value){
+        fitness += value;
     }
 
 
@@ -33,6 +33,10 @@ public class member {
 
     public Integer[][] getRoom(){
         return floorSpace;
+    }
+
+    public double getFitness(){
+        return fitness;
     }
 
 

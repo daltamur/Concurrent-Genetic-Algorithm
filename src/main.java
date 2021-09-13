@@ -1,13 +1,9 @@
-import java.io.IOException;
-import java.lang.reflect.Member;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+
 
 public class main {
     public static void main(String[] args) throws ExecutionException, InterruptedException {
-        Lock lock=new ReentrantLock();
         int cores = Runtime.getRuntime().availableProcessors();
         //save 1 thread for UI
         int coresForProcessing=cores-1;
@@ -30,8 +26,6 @@ public class main {
             remainderRow=spaces%10;
         }
         //maximum amount of holes allowed, counts down to zero as holes are placed
-        final List<member> list= new ArrayList<>();
-        final List<member> synList=Collections.synchronizedList(list);
 
         Callable<member> roomCreation= () -> {
             member thisMember=new member();
@@ -87,18 +81,31 @@ public class main {
                 thisMember.addLocation(xAxis,yAxis,0);
             }
             thisMember.addRoom(floorSpace);
+
+            //calculate fitness using f(x)=1/((x+1)^2)
+            for (Integer key: thisMember.getHashmap().keySet()) {
+                ArrayList<Integer[]> coords=thisMember.getHashmap().get(key);
+                if(coords.size()>0){
+                    Integer[] comparedCoord=coords.get(0);
+                    for(int i=1; i<coords.size(); i++){
+                         Integer[] nextCoords=coords.get(i);
+                         double distance=Math.sqrt((Math.pow((comparedCoord[0]+nextCoords[0]),2))+(Math.pow((comparedCoord[1]+nextCoords[1]),2)));
+                         thisMember.changeFitness(1/(Math.pow((distance+1),2)));
+                    }
+                }
+            }
             return thisMember;
         };
-        ArrayList<Future<member>> allFLoors=new ArrayList<>();
+        ArrayList<Future<member>> allFloors=new ArrayList<>();
         for(int i=0;i<300;i++){
             Future<member> thisFloor=service.submit(roomCreation);
-            allFLoors.add(thisFloor);
-            System.out.println(allFLoors.size());
+            allFloors.add(thisFloor);
+            System.out.println(allFloors.size());
         }
         //System.out.println(fitnessMeasurment(floorSpace));
 
         for(int i=0;i<300;i++){
-            Future<member> future=allFLoors.get(i);
+            Future<member> future=allFloors.get(i);
             member member=future.get();
             Integer[][] thisFloor=member.getRoom();
             if(i==299){
@@ -108,9 +115,10 @@ public class main {
                 for(int x=0;x<thisFloor[y].length ;x++){
                     System.out.print(thisFloor[y][x]+"|");
                 }
-                System.out.println("");
+                System.out.println();
                 System.out.println("________________________");
             }
+            System.out.println(member.getFitness());
             System.out.println("++++++++++++");
         }
     }
