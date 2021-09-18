@@ -1,8 +1,12 @@
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public class main {
+
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         int cores = Runtime.getRuntime().availableProcessors();
         //save 1 thread for UI
@@ -85,23 +89,34 @@ public class main {
             //calculate fitness using f(x)=1/((x+1)^2)
             for (Integer key: thisMember.getHashmap().keySet()) {
                 ArrayList<Integer[]> coords=thisMember.getHashmap().get(key);
+                //determine the fitness based on the highest proximity of a machine compared to the other machines
+                double curHighestFitness=0;
                 if(coords.size()>0){
-                    Integer[] comparedCoord=coords.get(0);
-                    for(int i=1; i<coords.size(); i++){
-                         Integer[] nextCoords=coords.get(i);
-                         double distance=Math.sqrt((Math.pow((comparedCoord[0]+nextCoords[0]),2))+(Math.pow((comparedCoord[1]+nextCoords[1]),2)));
-                         thisMember.changeFitness(1/(Math.pow((distance+1),2)));
+                    for(int i=0; i<coords.size();i++){
+                        double thisFitness=0;
+                        Integer[] comparedCoord=coords.get(i);
+                        for(int z=1; z<coords.size(); z++){
+                            Integer[] nextCoords=coords.get(z);
+                            double distance=Math.sqrt((Math.pow((comparedCoord[0]+nextCoords[0]),2))+(Math.pow((comparedCoord[1]+nextCoords[1]),2)));
+                            thisFitness+=1/(Math.pow(distance,2));
+                        }
+                        if(thisFitness>curHighestFitness){
+                            curHighestFitness=thisFitness;
+                        }
                     }
+                    thisMember.changeFitness(curHighestFitness);
                 }
             }
             return thisMember;
         };
-        ArrayList<Future<member>> allFloors=new ArrayList<>();
+        List<Callable<member>>tasks=new ArrayList<>();
+        List<Future<member>> allFloors;
         for(int i=0;i<300;i++){
-            Future<member> thisFloor=service.submit(roomCreation);
-            allFloors.add(thisFloor);
-            System.out.println(allFloors.size());
+            tasks.add(roomCreation);
         }
+
+        allFloors=service.invokeAll(tasks);
+
         //System.out.println(fitnessMeasurment(floorSpace));
 
         for(int i=0;i<300;i++){
@@ -121,56 +136,18 @@ public class main {
             System.out.println(member.getFitness());
             System.out.println("++++++++++++");
         }
+        List<member>selectionList=new ArrayList<>();
+        service=ForkJoinPool.commonPool();
+        Lock lock=new ReentrantLock();
+        final AtomicInteger selectionListIndex=new AtomicInteger(0);
+        Callable<member>selection=()->{
+            System.out.println(selectionListIndex.get());
+            selectionListIndex.getAndAdd(1);
+            return null;
+        };
+        for(int i=0;i<300;i++){
+            service.submit(selection);
+        }
     }
 
-    private static int fitnessMeasurment(Integer[][] floorSpace) {
-       int fitness=0;
-       for(int i=0;i<floorSpace.length;i++){
-           for(int x=0;x<floorSpace[i].length;x++){
-               //if we are in an evenly numbered space that isn't on an edge
-               if(x%2==0&&i!=floorSpace.length-1&&x!=floorSpace[i].length-1){
-                    //if the current number is odd, the number to the right and bottom is even, add one point to fitness
-                   if(floorSpace[i][x]%2!=0&&floorSpace[i+1][x]%2==0&&floorSpace[i][x+1]%2==0){
-                       fitness+=1;
-                   }
-                   //on a vertical edge
-               }else if(x%2==0&&i==floorSpace.length-1&&x!=floorSpace[i].length-1){
-                   if(floorSpace[i][x]%2!=0&&floorSpace[i][x+1]%2==0){
-                       fitness+=1;
-                   }
-                   //on a horizontal edge
-               }else  if(x%2==0&&i!=floorSpace.length-1&&x==floorSpace[i].length-1){
-                   if(floorSpace[i][x]%2!=0&&floorSpace[i][x+1]%2==0){
-                       fitness+=1;
-                   }
-               }else if(x%2==0&&i==floorSpace.length-1&&x==floorSpace[i].length-1){
-                   if(floorSpace[i][x]%2!=0){
-                       fitness+=1;
-                   }
-               }else if(x%2!=0&&i!=floorSpace.length-1&&x!=floorSpace[i].length-1){
-                   //if the current number is even, the number to the right and bottom is odd, add one point to fitness
-                   if(floorSpace[i][x]%2==0&&floorSpace[i+1][x]%2!=0&&floorSpace[i][x+1]%2!=0&&floorSpace[i][x]!=0){
-                       fitness+=1;
-                   }
-                   //on a vertical edge
-               }else if(x%2!=0&&i==floorSpace.length-1&&x!=floorSpace[i].length-1){
-                   if(floorSpace[i][x]%2==0&&floorSpace[i][x+1]%2!=0&floorSpace[i][x]!=0){
-                       fitness+=1;
-                   }
-                   //on a horizontal edge
-               }else  if(x%2!=0&&i!=floorSpace.length-1&&x==floorSpace[i].length-1){
-                   if(floorSpace[i][x]%2==0&&floorSpace[i+1][x]%2!=0&floorSpace[i][x]!=0){
-                       fitness+=1;
-                   }
-                   //on the final entry
-               }else if(x%2!=0&&i==floorSpace.length-1&&x==floorSpace[i].length-1){
-                   if(floorSpace[i][x]%2==0){
-                       fitness+=1;
-                   }
-               }
-           }
-       }
-
-       return fitness;
-    }
 }
