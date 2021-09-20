@@ -87,26 +87,30 @@ public class main {
             thisMember.addRoom(floorSpace);
 
             //calculate fitness using f(x)=1/((x+1)^2)
+            ArrayList<Double> averageLengths=new ArrayList<>();
             for (Integer key: thisMember.getHashmap().keySet()) {
                 ArrayList<Integer[]> coords=thisMember.getHashmap().get(key);
                 //determine the fitness based on the highest proximity of a machine compared to the other machines
-                double curHighestFitness=0;
-                if(coords.size()>0){
-                    for(int i=0; i<coords.size();i++){
-                        double thisFitness=0;
-                        Integer[] comparedCoord=coords.get(i);
-                        for(int z=1; z<coords.size(); z++){
-                            Integer[] nextCoords=coords.get(z);
-                            double distance=Math.sqrt((Math.pow((comparedCoord[0]+nextCoords[0]),2))+(Math.pow((comparedCoord[1]+nextCoords[1]),2)));
-                            thisFitness+=1/(Math.pow(distance,2));
-                        }
-                        if(thisFitness>curHighestFitness){
-                            curHighestFitness=thisFitness;
-                        }
-                    }
-                    thisMember.changeFitness(curHighestFitness);
+                double curFitness=0;
+                if(coords.size()>1){
+                    double thisAverage=0;
+                   for(int i=0;i<coords.size();i++){
+                       for (Integer[] coord : coords) {
+                           double distance = Math.sqrt((Math.pow((coords.get(i)[0] - coord[0]), 2)) + (Math.pow((coords.get(i)[1] - coord[1]), 2)));
+                           thisAverage += distance;
+                       }
+                   }
+                   thisAverage=thisAverage/(coords.size()*(coords.size()-1));
+                   averageLengths.add(thisAverage);
                 }
             }
+            double averageBetweenTwoSameValues=0.0;
+            for(int i = 0; i < averageLengths.size(); i++)
+            {
+                averageBetweenTwoSameValues += averageLengths.get(i);
+            }
+            averageBetweenTwoSameValues=averageBetweenTwoSameValues/averageLengths.size();
+            thisMember.changeFitness(1/Math.pow(averageBetweenTwoSameValues,2));
             return thisMember;
         };
         List<Callable<member>>tasks=new ArrayList<>();
@@ -137,17 +141,33 @@ public class main {
             System.out.println("++++++++++++");
         }
         List<member>selectionList=new ArrayList<>();
-        service=ForkJoinPool.commonPool();
+        List<member>selectionListSyn=Collections.synchronizedList(selectionList);
+        ExecutorService selectionservice=Executors.newFixedThreadPool(coresForProcessing-1);
         Lock lock=new ReentrantLock();
         final AtomicInteger selectionListIndex=new AtomicInteger(0);
-        Callable<member>selection=()->{
-            System.out.println(selectionListIndex.get());
+        List<Future<member>> finalAllFloors = allFloors;
+        Callable<member> selection=()->{
+            int curIndex;
+            curIndex=selectionListIndex.get();
             selectionListIndex.getAndAdd(1);
-            return null;
+            Future<member> curMemberFuture= finalAllFloors.get(curIndex);
+            member curMember=curMemberFuture.get();
+            int numberOfEntries=(int)Math.floor(100*curMember.getFitness());
+            System.out.println("current index is: "+curIndex+" Fitness is: "+curMember.getFitness()+" Number of entries: "+numberOfEntries);
+            for(int i=0;i<numberOfEntries;i++){
+                selectionListSyn.add(curMember);
+            }
+            return curMember;
         };
+        List<Callable<member>>roulette=new ArrayList<>();
         for(int i=0;i<300;i++){
-            service.submit(selection);
+            roulette.add(selection);
         }
+        //simple way to just make sure everything gets finished before anything else happens.
+        List<Future<member>>allFutures=service.invokeAll(roulette);
+        System.out.println(selectionListSyn.size());
+        member selectedMember=selectionListSyn.get(ThreadLocalRandom.current().nextInt(selectionListSyn.size()));
+        System.out.println("Fitness is: "+selectedMember.getFitness());
     }
 
 }
