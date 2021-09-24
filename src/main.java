@@ -154,38 +154,29 @@ public class main {
             }
             thisMember.addRoom(floorSpace);
 
-            //calculate fitness using f(x)=1/((x+1)^2)
-            ArrayList<Double> averageLengths=new ArrayList<>();
-            for (Integer key: thisMember.getHashmap().keySet()) {
-                ArrayList<Integer[]> coords=thisMember.getHashmap().get(key);
-                //determine the fitness based on the highest proximity of a machine compared to the other machines
-                double curFitness=0;
-                double currentBestAverage;
-                if(coords.size()>1&&key!=0){
-                    double thisAverage=0;
-                    for(int i=0;i<coords.size();i++){
-                        for (Integer[] coord : coords) {
-                            //maybe change this so we get the best average distance of key and average those best averages together with the affinity metric...we'll see how it goes first
-                            double distance = Math.sqrt((Math.pow((coords.get(i)[0] - coord[0]), 2)) + (Math.pow((coords.get(i)[1] - coord[1]), 2)))/key;
-                            thisAverage += distance;
+            //calculate fitness based on each individual member's closeness to others
+            double totalFitness=0;
+            for(int i=0;i<rowAmount;i++){
+                for(int x=0;x<floorSpace[i].length;x++){
+                    for(int y=0;y<rowAmount;y++){
+                        for(int z=0;z<floorSpace[y].length;z++){
+                            double distance=0;
+                            if(i!=y&&x!=z) {
+                                distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
+                                if (floorSpace[i][x].equals(floorSpace[y][z])) {
+                                    distance = 1 / distance;
+                                } else {
+                                    distance = distance * 2;
+                                }
+                            }
+                            totalFitness+=distance;
                         }
                     }
-                    thisAverage=(thisAverage/(coords.size()*(coords.size()-1)));
-                    averageLengths.add(thisAverage);
                 }
             }
-            double averageBetweenTwoSameValues=0.0;
-            for (Double averageLength : averageLengths) {
-                averageBetweenTwoSameValues += averageLength;
-            }
-            averageBetweenTwoSameValues=averageBetweenTwoSameValues/averageLengths.size();
-            thisMember.changeFitness(1/averageBetweenTwoSameValues);
+
+            thisMember.changeFitness(totalFitness);
             synList.add(thisMember);
-            try {
-                Thread.currentThread().join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
             latch.countDown();
         };
         List<Future<member>> allFloors;
@@ -218,12 +209,8 @@ public class main {
                     childFloorSpace[i]=new Integer[10];
                     for(int x=0;x<10;x++) {
                         //random number between 0 (reps a hole) and the amount of flavors
-                        double mutationProb=ThreadLocalRandom.current().nextDouble(0,1);
                         //random number between 0 (reps a hole) and the amount of flavors
-                        if(mutationProb>.1){
-                            childFloorSpace[i][x]=ThreadLocalRandom.current().nextInt(1, flavors+1);
-                            thisMember.addLocation(x, i, childFloorSpace[i][x]);
-                        }else if(x<=crossOverPoint){
+                         if(x<=crossOverPoint){
                             //childFloorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
                             childFloorSpace[i][x]=selectedMember.getRoom()[i][x];
                             thisMember.addLocation(x, i, childFloorSpace[i][x]);
@@ -242,10 +229,7 @@ public class main {
                         for (int x = 0; x < remainderRow; x++) {
                             double mutationProb=ThreadLocalRandom.current().nextDouble(0,1);
                             //random number between 0 (reps a hole) and the amount of flavors
-                            if(mutationProb>.1){
-                                childFloorSpace[i][x]=ThreadLocalRandom.current().nextInt(1, flavors+1);
-                                thisMember.addLocation(x, i, childFloorSpace[i][x]);
-                            }else if(x<=crossOverPoint){
+                            if(x<=crossOverPoint){
                                 //childFloorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
                                 childFloorSpace[i][x]=selectedMember.getRoom()[i][x];
                                 thisMember.addLocation(x, i, childFloorSpace[i][x]);
@@ -262,10 +246,7 @@ public class main {
                             //random number between 0 (reps a hole) and the amount of flavors
                             double mutationProb=ThreadLocalRandom.current().nextDouble(0,1);
                             //random number between 0 (reps a hole) and the amount of flavors
-                            if(mutationProb>.1){
-                                childFloorSpace[i][x]=ThreadLocalRandom.current().nextInt(1, flavors+1);
-                                thisMember.addLocation(x, i, childFloorSpace[i][x]);
-                            }else if(x<=crossOverPoint){
+                            if(x<=crossOverPoint){
                                 //childFloorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
                                 childFloorSpace[i][x]=selectedMember.getRoom()[i][x];
                                 thisMember.addLocation(x, i, childFloorSpace[i][x]);
@@ -277,6 +258,23 @@ public class main {
                         }
                     }
                 }
+            }
+
+            for(int i=0;i<spaces;i++){
+                int value=ThreadLocalRandom.current().nextInt(10);
+                //10 percent chance we mutate
+                if(value==0){
+                    int place1=ThreadLocalRandom.current().nextInt(spaces-1);
+                    int place1X=(place1%10);
+                    int place1Y=(place1/10);
+                    int place2=ThreadLocalRandom.current().nextInt(spaces-1);
+                    int place2X=(place2%10);
+                    int place2Y=(place2/10);
+                    int place1Val=childFloorSpace[place1Y][place1X];
+                    childFloorSpace[place1Y][place1X]=childFloorSpace[place2Y][place2X];
+                    childFloorSpace[place2Y][place2X]=place1Val;
+                }
+
             }
             //now make sure there is the right number of holes
             //if there are too many holes, fill up as many as needed
@@ -304,31 +302,27 @@ public class main {
 
             thisMember.addRoom(childFloorSpace);
 
-            ArrayList<Double> averageLengths=new ArrayList<>();
-            for (Integer key: thisMember.getHashmap().keySet()) {
-                ArrayList<Integer[]> coords=thisMember.getHashmap().get(key);
-                //determine the fitness based on the highest proximity of a machine compared to the other machines
-                double curFitness=0;
-                double currentBestAverage;
-                if(coords.size()>1&&key!=0){
-                    double thisAverage=0;
-                    for(int i=0;i<coords.size();i++){
-                        for (Integer[] coord : coords) {
-                            //maybe change this so we get the best average distance of key and average those best averages together with the affinity metric...we'll see how it goes first
-                            double distance = Math.sqrt((Math.pow((coords.get(i)[0] - coord[0]), 2)) + (Math.pow((coords.get(i)[1] - coord[1]), 2)))/key;
-                            thisAverage += distance;
+            double totalFitness=0;
+            for(int i=0;i<rowAmount;i++){
+                for(int x=0;x<childFloorSpace[i].length;x++){
+                    for(int y=0;y<rowAmount;y++){
+                        for(int z=0;z<childFloorSpace[y].length;z++){
+                            double distance=0;
+                            if(i!=y&&x!=z) {
+                                distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
+                                if (childFloorSpace[i][x].equals(childFloorSpace[y][z])) {
+                                    distance = 1 / distance;
+                                } else {
+                                    distance = distance * 2;
+                                }
+                            }
+                            totalFitness+=distance;
                         }
                     }
-                    thisAverage=(thisAverage/(coords.size()*(coords.size()-1)));
-                    averageLengths.add(1/thisAverage);
                 }
             }
-            double averageBetweenTwoSameValues=0.0;
-            for (Double averageLength : averageLengths) {
-                averageBetweenTwoSameValues += averageLength;
-            }
-            averageBetweenTwoSameValues=averageBetweenTwoSameValues/averageLengths.size();
-            thisMember.changeFitness(averageBetweenTwoSameValues);
+
+            thisMember.changeFitness(totalFitness);
             childrenListSyn.add(thisMember);
             latch.countDown();
         };
@@ -360,7 +354,7 @@ public class main {
             curIndex=selectionListIndex.get();
             selectionListIndex.getAndAdd(1);
             member curMember=lastGen.get(curIndex);
-            int numberOfEntries=(int)Math.floor(100*curMember.getFitness());
+            int numberOfEntries=(int)curMember.getFitness();
             System.out.println("current index is: "+curIndex+" Fitness is: "+curMember.getFitness()+" Number of entries: "+numberOfEntries);
             for(int i=0;i<numberOfEntries;i++){
                 thisMemberCount.add(curMember);
