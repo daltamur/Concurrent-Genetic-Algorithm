@@ -1,33 +1,134 @@
-import java.lang.reflect.Member;
+import javax.swing.*;
+import javax.swing.Timer;
+import java.awt.*;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public class main {
+
+public class main extends JPanel{
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        int curXPos=0;
+        int curYPos=0;
+        member thisMember = null;
+        // draw the rectangle here
+            try {
+                thisMember = (member) exchanger.exchange("Member received!");
+                System.out.println("Current member has fitness of " + thisMember.getFitness());
+                for(int x=0;x<300;x++){
+                    Integer[][] thisFloor=thisMember.getRoom();
+                    if(x==299){
+                        System.out.println("Final floor");
+                    }
+                    for(int y=0;y<rowAmount;y++){
+                        for(int z=0;z<thisFloor[y].length ;z++){
+                            System.out.print(thisFloor[y][z]+"|");
+                        }
+                        System.out.println();
+                        System.out.println("________________________");
+                    }
+                    System.out.println(thisMember.getFitness());
+                    System.out.println("++++++++++++");
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 
 
+
+        System.out.println("...");
+        for (int row = 0; row < 10; row++) {
+            for (int col = 0; col < rowAmount; col++) {
+                assert thisMember != null;
+                if(col==rowAmount-1&&thisMember.getRoom()[col].length-1<row) {
+                    g.setColor(Color.gray);
+                }else if(thisMember.getRoom()[col][row]==0){
+                    g.setColor(Color.white);
+                }else{
+                    Color curColor=colors.get(thisMember.getRoom()[col][row]);
+                    if(curColor==null){
+                        int c1 = (int) (ThreadLocalRandom.current().nextDouble() * 255);
+                        int c2 = (int) (ThreadLocalRandom.current().nextDouble() * 255);
+                        int c3 = (int) (ThreadLocalRandom.current().nextDouble() * 255);
+                        curColor=new Color(c1,c2,c3);
+                        while(curColor.equals(Color.gray)||curColor.equals(Color.white)){
+                            c1 = (int) (Math.random() * 255);
+                            c2 = (int) (Math.random() * 255);
+                            c3 = (int) (Math.random() * 255);
+                            curColor=new Color(c1,c2,c3);
+                        }
+                        colors.put(thisMember.getRoom()[col][row],curColor);
+                       }
+
+                g.setColor(curColor);
+                }
+                int roundedSpace=rowAmount*10;
+                g.fillRect(curXPos,curYPos,getWidth()/10,(int)getHeight()/rowAmount);
+                curYPos+=(int)getHeight()/rowAmount;
+            }
+            curYPos=0;
+            curXPos+=getWidth()/10;
+            if(row==9){
+                curXPos=0;
+            }
+        }
+        g.dispose();
+
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        // so that our GUI is big enough
+        return new Dimension(1000, 1000);
+    }
+
+    private static void createAndShowGui() {
+        main mainPanel = new main();
+
+        frame = new JFrame("Floor");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.getContentPane().add(mainPanel);
+        frame.pack();
+        frame.setLocationByPlatform(true);
+        Timer t = new Timer(2000,
+        new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                mainPanel.repaint();
+            }
+        });
+        t.start();
+        frame.setVisible(true);
+
+    }
+
+    private static HashMap<Integer,Color>colors=new HashMap<>();
+    private static int areaOfSquares;
     private static int remainderRow;
     public static int rowAmount;
+    public static JFrame frame;
     public static int flavors;
-    public static int cores = Runtime.getRuntime().availableProcessors();
     public static int spaces;
     public static int machines;
+
+    public static Exchanger exchanger = new Exchanger();
     //save 1 thread for UI
-    public static int coresForProcessing=cores-1;
-    public static ExecutorService service= Executors.newWorkStealingPool();
+    public static ExecutorService service= Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors()-1);
     //the final row will hold the last of the spaces if need be, this number indicates how many spaces are in the row
-    public static void main(String[] args) throws ExecutionException, InterruptedException {
+    public static void main(String[] args) throws ExecutionException, InterruptedException{
+
         int cores = Runtime.getRuntime().availableProcessors();
-        //save 1 thread for UI
-        int coresForProcessing=cores-1;//Executors.newFixedThreadPool(coresForProcessing);
-        Scanner scanner=new Scanner(System.in);
-        System.out.println("How many spaces?");
-        spaces=scanner.nextInt();
-        System.out.println("How many Machines?");
-        machines=scanner.nextInt();
-        System.out.println("How many flavors?");
-        flavors=scanner.nextInt();
+        getSpaces(frame);
+        getMachines(frame);
+        getFlavors(frame);
         if (spaces%10==0){
             rowAmount=spaces/10;
             remainderRow=0;
@@ -35,6 +136,13 @@ public class main {
             rowAmount=(spaces/10)+1;
             remainderRow=spaces%10;
         }
+        int roundedSpaces=rowAmount*10;
+        areaOfSquares=(1000*1000)/roundedSpaces;
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                createAndShowGui();
+            }
+        });
         //maximum amount of holes allowed, counts down to zero as holes are placed
 
         //System.out.println(fitnessMeasurment(floorSpace));
@@ -76,7 +184,7 @@ public class main {
             childrenListSyn=childrenRun(selectedMemberMate,selectedMember);
             //childrenListSyn=getFirstGen();
             i++;
-            for(int x=0;x<300;x++){
+            /*for(int x=0;x<300;x++){
                 member member=childrenListSyn.get(x);
                 Integer[][] thisFloor=member.getRoom();
                 if(x==299){
@@ -92,6 +200,7 @@ public class main {
                 System.out.println(member.getFitness());
                 System.out.println("++++++++++++");
             }
+             */
         }
     }
 
@@ -160,21 +269,22 @@ public class main {
                 for(int x=0;x<floorSpace[i].length;x++){
                     for(int y=0;y<rowAmount;y++){
                         for(int z=0;z<floorSpace[y].length;z++){
-                            double distance=0;
+                            double curFitnessClose=0;
+                            double curFitnessFar=0;
                             if(i!=y&&x!=z) {
-                                distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
-                                if (floorSpace[i][x].equals(floorSpace[y][z])) {
-                                    distance = 1 / distance;
-                                } else {
-                                    distance = distance * 2;
+                                double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
+                                double flavorDifference=Math.abs(floorSpace[i][x]-floorSpace[y][z]);
+                                if(flavorDifference<=3){
+                                    totalFitness+=1/distance;
+                                }else{
+                                    totalFitness+=Math.pow(distance,2);
                                 }
                             }
-                            totalFitness+=distance;
                         }
                     }
                 }
             }
-
+            //totalFitness+=thisMember.getHashmap().keySet().size()*totalFitness;
             thisMember.changeFitness(totalFitness);
             synList.add(thisMember);
             latch.countDown();
@@ -227,7 +337,6 @@ public class main {
                     if(remainderRow!=0) {
                         childFloorSpace[i] = new Integer[remainderRow];
                         for (int x = 0; x < remainderRow; x++) {
-                            double mutationProb=ThreadLocalRandom.current().nextDouble(0,1);
                             //random number between 0 (reps a hole) and the amount of flavors
                             if(x<=crossOverPoint){
                                 //childFloorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
@@ -264,15 +373,19 @@ public class main {
                 int value=ThreadLocalRandom.current().nextInt(10);
                 //10 percent chance we mutate
                 if(value==0){
-                    int place1=ThreadLocalRandom.current().nextInt(spaces-1);
+                    int place1=ThreadLocalRandom.current().nextInt(spaces);
                     int place1X=(place1%10);
                     int place1Y=(place1/10);
-                    int place2=ThreadLocalRandom.current().nextInt(spaces-1);
+                    int place2=ThreadLocalRandom.current().nextInt(spaces);
                     int place2X=(place2%10);
                     int place2Y=(place2/10);
                     int place1Val=childFloorSpace[place1Y][place1X];
+                    thisMember.removeValueFromHashmap(place1X,place1Y,childFloorSpace[place1Y][place1X]);
                     childFloorSpace[place1Y][place1X]=childFloorSpace[place2Y][place2X];
+                    thisMember.addLocation(place1X,place1Y,childFloorSpace[place1Y][place1X]);
+                    thisMember.removeValueFromHashmap(place1X,place1Y,childFloorSpace[place2Y][place2X]);
                     childFloorSpace[place2Y][place2X]=place1Val;
+                    thisMember.addLocation(place1X,place1Y,childFloorSpace[place2Y][place2X]);
                 }
 
             }
@@ -293,10 +406,35 @@ public class main {
                     int yVal=removedCoords[1];
                     thisMember.removeValueFromHashmap(xVal,yVal,0);
                     int newVal=ThreadLocalRandom.current().nextInt(1, flavors+1);
-                    childFloorSpace[xVal][yVal]=newVal;
+                    childFloorSpace[yVal][xVal]=newVal;
                     thisMember.addLocation(xVal,yVal,newVal);
                     excessHoles--;
                 }
+            }else if(numberOfHoles<(spaces-machines)){
+                //not enough holes, choose random indices and put a hole in.
+                ArrayList<Integer[]>holesCoordinates=thisMember.getHashmap().get(0);
+                int excessSpots;
+                if(thisMember.getHashmap().containsKey(0)) {
+                    excessSpots = (spaces - machines) - holesCoordinates.size();
+                }else{
+                    excessSpots=spaces-machines;
+                }
+                while(excessSpots>0) {
+                    int randomIndex = ThreadLocalRandom.current().nextInt(spaces);
+                    int place1X = (randomIndex % 10);
+                    int place1Y = (randomIndex / 10);
+                    while (childFloorSpace[place1Y][place1X] == 0) {
+                        randomIndex = ThreadLocalRandom.current().nextInt(spaces);
+                        place1X = (randomIndex % 10);
+                        place1Y = (randomIndex / 10);
+                    }
+                    int origVal=childFloorSpace[place1Y][place1X];
+                    childFloorSpace[place1Y][place1X]=0;
+                    thisMember.removeValueFromHashmap(place1X,place1Y,origVal);
+                    thisMember.addLocation(place1X,place1Y,0);
+                    excessSpots--;
+                }
+
             }
 
 
@@ -307,38 +445,32 @@ public class main {
                 for(int x=0;x<childFloorSpace[i].length;x++){
                     for(int y=0;y<rowAmount;y++){
                         for(int z=0;z<childFloorSpace[y].length;z++){
-                            double distance=0;
+                            double curFitnessClose=0;
+                            double curFitnessFar=0;
                             if(i!=y&&x!=z) {
-                                distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
-                                if (childFloorSpace[i][x].equals(childFloorSpace[y][z])) {
-                                    distance = 1 / distance;
-                                } else {
-                                    distance = distance * 2;
+                                double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
+                                double flavorDifference=Math.abs(childFloorSpace[i][x]-childFloorSpace[y][z]);
+                                if(flavorDifference<=3){
+                                    totalFitness+=1/distance;
+                                }else{
+                                    totalFitness+=Math.pow(distance,2);
                                 }
                             }
-                            totalFitness+=distance;
                         }
                     }
                 }
             }
-
+            //totalFitness+=thisMember.getHashmap().keySet().size()*totalFitness;
             thisMember.changeFitness(totalFitness);
             childrenListSyn.add(thisMember);
             latch.countDown();
         };
-        List<Callable<member>>tasks=new ArrayList<>();
-        List<Future<member>> allFloors;
         for(int i=0;i<300;i++){
-            //tasks.add(createChildren);
             service.execute(createChildren);
         }
         while (latch.getCount()>0) {
             latch.await();
         }
-        //service.shutdown();
-        //for (Future<member> allFloor : childrenListSyn) {
-        //    finalVal.add(allFloor.get());
-        //}
         return childrenListSyn;
 
     }
@@ -378,9 +510,52 @@ public class main {
         }while (selectedMember.getFitness()==selectedMemberMate.getFitness());
         //simple way to just make sure everything gets finished before anything else happens.
         System.out.println(selectionListSyn.size());
+        String objectReceived= (String) exchanger.exchange(selectedMember);
+        System.out.println(objectReceived);
         parents.add(selectedMember);
         parents.add(selectedMemberMate);
         return parents;
     }
 
+
+    public static void getSpaces(final JFrame frame){
+        String input = (String) JOptionPane.showInputDialog(
+                frame,
+                "How Many Spaces?",
+                "Swing Tester",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                null,
+                ""
+        );
+        spaces=Integer.parseInt(input);
+    }
+
+    public static void getMachines(final JFrame frame){
+        String input = (String) JOptionPane.showInputDialog(
+                frame,
+                "How Many machines?",
+                "Swing Tester",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                null,
+                ""
+        );
+
+        machines=Integer.parseInt(input);
+    }
+
+    public static void getFlavors(final JFrame frame){
+        String input = (String) JOptionPane.showInputDialog(
+                frame,
+                "How Many flavors?",
+                "Swing Tester",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                null,
+                ""
+        );
+
+        flavors=Integer.parseInt(input);
+    }
 }

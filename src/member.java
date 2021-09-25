@@ -42,7 +42,11 @@ public class member {
 
     public void removeValueFromHashmap(int xCoord, int yCoord, int value){
         ArrayList<Integer[]>list=valueLocations.get(value);
+        if(list==null){
+            System.out.println("null List");
+        }
         list.removeIf(coords -> coords[0] == xCoord && coords[1] == yCoord);
+        valueLocations.replace(value,list);
     }
 
 
