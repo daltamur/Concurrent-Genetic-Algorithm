@@ -71,9 +71,8 @@ public class main extends JPanel{
 
                 g.setColor(curColor);
                 }
-                int roundedSpace=rowAmount*10;
-                g.fillRect(curXPos,curYPos,getWidth()/10,(int)getHeight()/rowAmount);
-                curYPos+=(int)getHeight()/rowAmount;
+                g.fillRect(curXPos,curYPos,getWidth()/10, getHeight() /rowAmount);
+                curYPos+= getHeight() /rowAmount;
             }
             curYPos=0;
             curXPos+=getWidth()/10;
@@ -99,7 +98,7 @@ public class main extends JPanel{
         frame.getContentPane().add(mainPanel);
         frame.pack();
         frame.setLocationByPlatform(true);
-        Timer t = new Timer(2000,
+        Timer t = new Timer(500,
         new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 mainPanel.repaint();
@@ -110,8 +109,7 @@ public class main extends JPanel{
 
     }
 
-    private static HashMap<Integer,Color>colors=new HashMap<>();
-    private static int areaOfSquares;
+    private static final HashMap<Integer,Color>colors=new HashMap<>();
     private static int remainderRow;
     public static int rowAmount;
     public static JFrame frame;
@@ -137,7 +135,7 @@ public class main extends JPanel{
             remainderRow=spaces%10;
         }
         int roundedSpaces=rowAmount*10;
-        areaOfSquares=(1000*1000)/roundedSpaces;
+        int areaOfSquares = (1000 * 1000) / roundedSpaces;
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 createAndShowGui();
@@ -172,7 +170,6 @@ public class main extends JPanel{
         System.out.println("Fitness is: "+selectedMember.getFitness());
         System.out.println("Fitness of mate is "+selectedMemberMate.getFitness());
 
-        List<member>childrenList=new ArrayList<>();
         List<member>childrenListSyn=childrenRun(selectedMemberMate,selectedMember);
         int i=0;
         while(i<1000){
@@ -274,11 +271,10 @@ public class main extends JPanel{
                             if(i!=y&&x!=z) {
                                 double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
                                 double flavorDifference=Math.abs(floorSpace[i][x]-floorSpace[y][z]);
-                                if(flavorDifference<=3){
-                                    totalFitness+=1/distance;
-                                }else{
-                                    totalFitness+=Math.pow(distance,2);
+                                if(flavorDifference==0){
+                                    flavorDifference=.5;
                                 }
+                                totalFitness+=distance/flavorDifference;
                             }
                         }
                     }
@@ -309,13 +305,14 @@ public class main extends JPanel{
         List<member>childrenList=new ArrayList<>();
         List<member>childrenListSyn=Collections.synchronizedList(childrenList);
         Runnable createChildren=()->{
-            int crossOverPoint=ThreadLocalRandom.current().nextInt(0,rowAmount);
+            //int crossOverPoint=ThreadLocalRandom.current().nextInt(0,rowAmount);
             //left side is initial parent, right side is the mate
             member thisMember=new member();
             boolean onFinalRow= spaces <= 10;
             Integer[][] childFloorSpace =new Integer[rowAmount][];
             for (int i=0;i<rowAmount;i++){
                 if (!onFinalRow){
+                    int crossOverPoint=ThreadLocalRandom.current().nextInt(0,10);
                     childFloorSpace[i]=new Integer[10];
                     for(int x=0;x<10;x++) {
                         //random number between 0 (reps a hole) and the amount of flavors
@@ -335,6 +332,7 @@ public class main extends JPanel{
                     }
                 }else{
                     if(remainderRow!=0) {
+                        int crossOverPoint=ThreadLocalRandom.current().nextInt(0,remainderRow);
                         childFloorSpace[i] = new Integer[remainderRow];
                         for (int x = 0; x < remainderRow; x++) {
                             //random number between 0 (reps a hole) and the amount of flavors
@@ -351,6 +349,7 @@ public class main extends JPanel{
                         }
                     }else{
                         childFloorSpace[i] = new Integer[10];
+                        int crossOverPoint=ThreadLocalRandom.current().nextInt(0,10);
                         for (int x = 0; x < 10; x++) {
                             //random number between 0 (reps a hole) and the amount of flavors
                             double mutationProb=ThreadLocalRandom.current().nextDouble(0,1);
@@ -450,11 +449,10 @@ public class main extends JPanel{
                             if(i!=y&&x!=z) {
                                 double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
                                 double flavorDifference=Math.abs(childFloorSpace[i][x]-childFloorSpace[y][z]);
-                                if(flavorDifference<=3){
-                                    totalFitness+=1/distance;
-                                }else{
-                                    totalFitness+=Math.pow(distance,2);
+                                if(flavorDifference==0){
+                                    flavorDifference=.5;
                                 }
+                                totalFitness+=distance/flavorDifference;
                             }
                         }
                     }
