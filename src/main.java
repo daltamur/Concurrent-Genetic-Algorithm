@@ -25,7 +25,7 @@ public class main extends JPanel{
         member thisMember = null;
         // draw the rectangle here
         try {
-            thisMember = (member) exchanger.exchange("Message received", 2000,TimeUnit.NANOSECONDS);
+            thisMember = (member) exchanger.exchange("Message received", 10000,TimeUnit.MILLISECONDS);
             currentPaintedMember=thisMember;
         } catch (InterruptedException | TimeoutException e) {
             thisMember=currentPaintedMember;
@@ -140,7 +140,7 @@ public class main extends JPanel{
         frame.pack();
         frame.setLocationByPlatform(true);
         //show a new floor every fifth of a second
-        Timer t = new Timer(50,
+        Timer t = new Timer(500,
                 new ActionListener() {
                     public void actionPerformed(ActionEvent e) {
                         mainPanel.repaint();
@@ -205,7 +205,7 @@ public class main extends JPanel{
         int i=0;
         //rinse and repeat for another 100 generations
         double selectedMemberFitness=0;
-        while(i<100){
+        while(i<1000){
             parents=getParents(childrenListSyn);
             childrenListSyn=childrenRun(parents);
             i++;
@@ -296,8 +296,8 @@ public class main extends JPanel{
                             if(i!=y&&x!=z) {
                                 double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
                                 double flavorDifference=Math.abs(floorSpace[i][x]-floorSpace[y][z]);
-                                if(flavorDifference<=100&&floorSpace[i][x]!=0&&floorSpace[y][z]!=0){
-                                    totalFitness+=(1/distance);
+                                if(flavorDifference>=100&&floorSpace[i][x]!=0&&floorSpace[y][z]!=0){
+                                    totalFitness+=(distance);
                                 }
                             }
                         }
@@ -486,8 +486,8 @@ public class main extends JPanel{
                             if(i!=y&&x!=z) {
                                 double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
                                 double flavorDifference=Math.abs(childFloorSpace[i][x]-childFloorSpace[y][z]);
-                                if(flavorDifference<=100&&childFloorSpace[i][x]!=0&&childFloorSpace[y][z]!=0){
-                                    totalFitness+=(1/distance);
+                                if(flavorDifference>=100&&childFloorSpace[i][x]!=0&&childFloorSpace[y][z]!=0){
+                                    totalFitness+=(distance);
                                 }
                             }
                         }
