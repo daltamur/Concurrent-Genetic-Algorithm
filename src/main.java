@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
@@ -14,6 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class main extends JPanel{
 
+    public static member currentPaintedMember=null;
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -21,73 +24,111 @@ public class main extends JPanel{
         int curYPos=0;
         member thisMember = null;
         // draw the rectangle here
-            try {
-                thisMember = (member) exchanger.exchange("Member received!");
-                System.out.println("Current member has fitness of " + thisMember.getFitness());
-                for(int x=0;x<300;x++){
-                    Integer[][] thisFloor=thisMember.getRoom();
-                    if(x==299){
-                        System.out.println("Final floor");
-                    }
-                    for(int y=0;y<rowAmount;y++){
-                        for(int z=0;z<thisFloor[y].length ;z++){
-                            System.out.print(thisFloor[y][z]+"|");
-                        }
-                        System.out.println();
-                        System.out.println("________________________");
-                    }
-                    System.out.println(thisMember.getFitness());
-                    System.out.println("++++++++++++");
+        try {
+            thisMember = (member) exchanger.exchange("Message received", 2000,TimeUnit.NANOSECONDS);
+            currentPaintedMember=thisMember;
+        } catch (InterruptedException | TimeoutException e) {
+            thisMember=currentPaintedMember;
+        }
+        //System.out.println("Current member has fitness of " + thisMember.getFitness());
+        if(thisMember!=null) {
+            Integer[][] thisFloor = thisMember.getRoom();
+            for (int y = 0; y < rowAmount; y++) {
+                for (int z = 0; z < thisFloor[y].length; z++) {
+                    System.out.print(thisFloor[y][z] + "|");
                 }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.out.println();
+                System.out.println("________________________");
             }
+            System.out.println(thisMember.getFitness());
+            System.out.println("++++++++++++");
 
 
-
-        System.out.println("...");
-        for (int row = 0; row < 10; row++) {
-            for (int col = 0; col < rowAmount; col++) {
-                assert thisMember != null;
-                if(col==rowAmount-1&&thisMember.getRoom()[col].length-1<row) {
-                    g.setColor(Color.gray);
-                }else if(thisMember.getRoom()[col][row]==0){
-                    g.setColor(Color.white);
-                }else{
-                    Color curColor=colors.get(thisMember.getRoom()[col][row]);
-                    if(curColor==null){
-                        int c1 = (int) (ThreadLocalRandom.current().nextDouble() * 255);
-                        int c2 = (int) (ThreadLocalRandom.current().nextDouble() * 255);
-                        int c3 = (int) (ThreadLocalRandom.current().nextDouble() * 255);
-                        curColor=new Color(c1,c2,c3);
-                        while(curColor.equals(Color.gray)||curColor.equals(Color.white)){
-                            c1 = (int) (Math.random() * 255);
-                            c2 = (int) (Math.random() * 255);
-                            c3 = (int) (Math.random() * 255);
-                            curColor=new Color(c1,c2,c3);
+            System.out.println("...");
+            for (int row = 0; row < 10; row++) {
+                for (int col = 0; col < rowAmount; col++) {
+                    //double waveLength=(double)(580*(thisMember.getRoom()[col][row]/flavors));
+                    if (col == rowAmount - 1 && thisMember.getRoom()[col].length - 1 < row) {
+                        g.setColor(Color.gray);
+                    } else if (thisMember.getRoom()[col][row] == 0) {
+                        g.setColor(Color.white);
+                    } else {
+                        Color curColor = colors.get(thisMember.getRoom()[col][row]);
+                        if (curColor == null) {
+                            Integer[] getRGB = getRGB(thisMember.getRoom()[col][row]);
+                            curColor = new Color(getRGB[0], getRGB[1], getRGB[2]);
+                            colors.put(thisMember.getRoom()[col][row], curColor);
                         }
-                        colors.put(thisMember.getRoom()[col][row],curColor);
-                       }
-
-                g.setColor(curColor);
+                        g.setColor(curColor);
+                    }
+                    g.fillRect(curXPos, curYPos, getWidth() / 10, getHeight() / rowAmount);
+                    curYPos += getHeight() / rowAmount;
                 }
-                g.fillRect(curXPos,curYPos,getWidth()/10, getHeight() /rowAmount);
-                curYPos+= getHeight() /rowAmount;
-            }
-            curYPos=0;
-            curXPos+=getWidth()/10;
-            if(row==9){
-                curXPos=0;
+                curYPos = 0;
+                curXPos += getWidth() / 10;
+                if (row == 9) {
+                    curXPos = 0;
+                }
             }
         }
-        g.dispose();
 
     }
+
 
     @Override
     public Dimension getPreferredSize() {
         // so that our GUI is big enough
         return new Dimension(1000, 1000);
+    }
+
+
+    //modified from some fortran code I found
+    public static Integer[] getRGB(double wavelength){
+        double R=0.0;
+        double B=0.0;
+        double G=0.0;
+        double SSS=0.0;
+        if (wavelength >= 380 && wavelength < 440) {
+            R = -(wavelength - 440.) / (440. - 350.);
+            G = 0.0;
+            B = 1.0;
+        }else if (wavelength >= 440 && wavelength < 490) {
+            R = 0.0;
+            G = (wavelength - 440.) / (490. - 440.);
+            B = 1.0;
+        }else if(wavelength >= 490 && wavelength < 510) {
+            R = 0.0;
+            G = 1.0;
+            B = -(wavelength - 510.) / (510. - 490.);
+        }else if (wavelength >= 510 && wavelength < 580){
+            R = (wavelength - 510.) / (580. - 510.);
+            G = 1.0;
+            B = 0.0;
+        }else if (wavelength >= 580 && wavelength < 645) {
+            R = 1.0;
+            G = -(wavelength - 645.) / (645. - 580.);
+            B = 0.0;
+        }else if (wavelength >= 645 && wavelength <= 780) {
+            R = 1.0;
+            G = 0.0;
+            B = 0.0;
+        }else {
+            R = 0.0;
+            G = 0.0;
+            B = 0.0;
+        }
+
+        if(wavelength >= 380 && wavelength < 420){
+            SSS = 0.3 + 0.7 * (wavelength - 350) / (420 - 350);
+        }else if(wavelength >= 420 && wavelength <= 700) {
+            SSS = 1.0;
+        }else if(wavelength > 700 && wavelength <= 780) {
+            SSS = 0.3 + 0.7 * (780 - wavelength) / (780 - 700);
+        }else {
+            SSS = 0.0;
+        }
+        SSS *= 255;
+        return new Integer[]{(int)(R*SSS), (int)(G*SSS), (int)(B*SSS)};
     }
 
     private static void createAndShowGui() {
@@ -98,12 +139,13 @@ public class main extends JPanel{
         frame.getContentPane().add(mainPanel);
         frame.pack();
         frame.setLocationByPlatform(true);
-        Timer t = new Timer(500,
-        new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                mainPanel.repaint();
-            }
-        });
+        //show a new floor every fifth of a second
+        Timer t = new Timer(50,
+                new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        mainPanel.repaint();
+                    }
+                });
         t.start();
         frame.setVisible(true);
 
@@ -116,6 +158,7 @@ public class main extends JPanel{
     public static int flavors;
     public static int spaces;
     public static int machines;
+
 
     public static Exchanger exchanger = new Exchanger();
     //save 1 thread for UI
@@ -135,70 +178,39 @@ public class main extends JPanel{
             remainderRow=spaces%10;
         }
         int roundedSpaces=rowAmount*10;
-        int areaOfSquares = (1000 * 1000) / roundedSpaces;
+
+        //start the gui
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 createAndShowGui();
             }
         });
+
         //maximum amount of holes allowed, counts down to zero as holes are placed
 
         //System.out.println(fitnessMeasurment(floorSpace));
+        //prints the floor matrix to ensure it is running right
         List<member> allFloors=getFirstGen();
-        for(int i=0;i<300;i++){
-            member member=allFloors.get(i);
-            Integer[][] thisFloor=member.getRoom();
-            if(i==299){
-                System.out.println("Final floor");
-            }
-            for(int y=0;y<rowAmount;y++){
-                for(int x=0;x<thisFloor[y].length ;x++){
-                    System.out.print(thisFloor[y][x]+"|");
-                }
-                System.out.println();
-                System.out.println("________________________");
-            }
-            System.out.println(member.getFitness());
-            System.out.println("++++++++++++");
-        }
-        //comment this out
-        //allFloors=getFirstGen();
-        //simple way to just make sure everything gets finished before anything else happens.
+
+
+        //get the two parents used for mutation
         List<member>parents=getParents(allFloors);
         member selectedMember=parents.get(0);
         member selectedMemberMate=parents.get(1);
         System.out.println("Fitness is: "+selectedMember.getFitness());
         System.out.println("Fitness of mate is "+selectedMemberMate.getFitness());
 
-        List<member>childrenListSyn=childrenRun(selectedMemberMate,selectedMember);
+        //new generation a splice between the two parents
+        List<member>childrenListSyn=childrenRun(parents);
         int i=0;
-        while(i<1000){
+        //rinse and repeat for another 100 generations
+        double selectedMemberFitness=0;
+        while(i<100){
             parents=getParents(childrenListSyn);
-            selectedMember=parents.get(0);
-            selectedMemberMate=parents.get(1);
-            System.out.println("Fitness is: "+selectedMember.getFitness());
-            System.out.println("Fitness of mate is "+selectedMemberMate.getFitness());
-            childrenListSyn=childrenRun(selectedMemberMate,selectedMember);
-            //childrenListSyn=getFirstGen();
+            childrenListSyn=childrenRun(parents);
             i++;
-            /*for(int x=0;x<300;x++){
-                member member=childrenListSyn.get(x);
-                Integer[][] thisFloor=member.getRoom();
-                if(x==299){
-                    System.out.println("Final floor");
-                }
-                for(int y=0;y<rowAmount;y++){
-                    for(int z=0;z<thisFloor[y].length ;z++){
-                        System.out.print(thisFloor[y][z]+"|");
-                    }
-                    System.out.println();
-                    System.out.println("________________________");
-                }
-                System.out.println(member.getFitness());
-                System.out.println("++++++++++++");
-            }
-             */
         }
+        service.shutdownNow();
     }
 
     public static List<member> getFirstGen() throws InterruptedException, ExecutionException {
@@ -216,7 +228,12 @@ public class main extends JPanel{
                     floorSpace[i]=new Integer[10];
                     for(int x=0;x<10;x++) {
                         //random number between 0 (reps a hole) and the amount of flavors
-                        floorSpace[i][x]=ThreadLocalRandom.current().nextInt(1, flavors+1);
+                        //random number between 0 (reps a hole) and the amount of flavors
+                        double randomVal = ThreadLocalRandom.current().nextInt(1, flavors+1);
+                        //scale the value based on amount of flavors;
+                        double scaledVal=(randomVal/flavors)*400;
+                        double wavelength =scaledVal+380;
+                        floorSpace[i][x]=(int)wavelength;
                         thisMember.addLocation(x, i, floorSpace[i][x]);
                     }
                     if(i+1==rowAmount-1){
@@ -227,15 +244,22 @@ public class main extends JPanel{
                         floorSpace[i] = new Integer[remainderRow];
                         for (int x = 0; x < remainderRow; x++) {
                             //random number between 0 (reps a hole) and the amount of flavors
-                            floorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
+                            double randomVal = ThreadLocalRandom.current().nextInt(1, flavors+1);
+                            //scale the value based on amount of flavors;
+                            double scaledVal=(randomVal/flavors)*400;
+                            double wavelength =scaledVal+380;
+                            floorSpace[i][x]=(int)wavelength;
                             thisMember.addLocation(x, i, floorSpace[i][x]);
-                            //will only make the hole if the random boolean is true and we can afford to add more holes
                         }
                     }else{
                         floorSpace[i] = new Integer[10];
                         for (int x = 0; x < 10; x++) {
                             //random number between 0 (reps a hole) and the amount of flavors
-                            floorSpace[i][x] =ThreadLocalRandom.current().nextInt(1, flavors+1);
+                            double randomVal = ThreadLocalRandom.current().nextInt(1, flavors+1);
+                            //scale the value based on amount of flavors;
+                            double scaledVal=(randomVal/flavors)*400;
+                            double wavelength =scaledVal+380;
+                            floorSpace[i][x]=(int)wavelength;
                             thisMember.addLocation(x, i, floorSpace[i][x]);
                         }
                     }
@@ -262,6 +286,7 @@ public class main extends JPanel{
 
             //calculate fitness based on each individual member's closeness to others
             double totalFitness=0;
+            int totalLikeDistances=0;
             for(int i=0;i<rowAmount;i++){
                 for(int x=0;x<floorSpace[i].length;x++){
                     for(int y=0;y<rowAmount;y++){
@@ -271,16 +296,15 @@ public class main extends JPanel{
                             if(i!=y&&x!=z) {
                                 double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
                                 double flavorDifference=Math.abs(floorSpace[i][x]-floorSpace[y][z]);
-                                if(flavorDifference==0){
-                                    flavorDifference=.5;
+                                if(flavorDifference<=100&&floorSpace[i][x]!=0&&floorSpace[y][z]!=0){
+                                    totalFitness+=(1/distance);
                                 }
-                                totalFitness+=distance/flavorDifference;
                             }
                         }
                     }
                 }
             }
-            //totalFitness+=thisMember.getHashmap().keySet().size()*totalFitness;
+
             thisMember.changeFitness(totalFitness);
             synList.add(thisMember);
             latch.countDown();
@@ -299,7 +323,7 @@ public class main extends JPanel{
     }
 
 
-    public static List<member> childrenRun(member finalSelectedMemberMate, member selectedMember) throws InterruptedException, ExecutionException {
+    public static List<member> childrenRun(List<member>matingPool) throws InterruptedException, ExecutionException {
         //service=Executors.newWorkStealingPool();
         CountDownLatch latch = new CountDownLatch(300);
         List<member>childrenList=new ArrayList<>();
@@ -308,16 +332,20 @@ public class main extends JPanel{
             //int crossOverPoint=ThreadLocalRandom.current().nextInt(0,rowAmount);
             //left side is initial parent, right side is the mate
             member thisMember=new member();
+            member selectedMember;
+            member finalSelectedMemberMate;
             boolean onFinalRow= spaces <= 10;
             Integer[][] childFloorSpace =new Integer[rowAmount][];
             for (int i=0;i<rowAmount;i++){
+                selectedMember=matingPool.get(ThreadLocalRandom.current().nextInt(matingPool.size()));
+                finalSelectedMemberMate=matingPool.get(ThreadLocalRandom.current().nextInt(matingPool.size()));
                 if (!onFinalRow){
-                    int crossOverPoint=ThreadLocalRandom.current().nextInt(0,10);
+                    int crossOverPoint=5;
                     childFloorSpace[i]=new Integer[10];
                     for(int x=0;x<10;x++) {
                         //random number between 0 (reps a hole) and the amount of flavors
                         //random number between 0 (reps a hole) and the amount of flavors
-                         if(x<=crossOverPoint){
+                        if(x<=crossOverPoint){
                             //childFloorSpace[i][x] = ThreadLocalRandom.current().nextInt(1, flavors+1);
                             childFloorSpace[i][x]=selectedMember.getRoom()[i][x];
                             thisMember.addLocation(x, i, childFloorSpace[i][x]);
@@ -369,9 +397,9 @@ public class main extends JPanel{
             }
 
             for(int i=0;i<spaces;i++){
-                int value=ThreadLocalRandom.current().nextInt(10);
-                //10 percent chance we mutate
-                if(value==0){
+                int value=ThreadLocalRandom.current().nextInt(100);
+                //1 percent chance we mutate
+                if(value==1){
                     int place1=ThreadLocalRandom.current().nextInt(spaces);
                     int place1X=(place1%10);
                     int place1Y=(place1/10);
@@ -404,7 +432,16 @@ public class main extends JPanel{
                     int xVal=removedCoords[0];
                     int yVal=removedCoords[1];
                     thisMember.removeValueFromHashmap(xVal,yVal,0);
-                    int newVal=ThreadLocalRandom.current().nextInt(1, flavors+1);
+                    int newVal;
+                    int place2=ThreadLocalRandom.current().nextInt(spaces);
+                    int place2X=(place2%10);
+                    int place2Y=(place2/10);
+                    while (childFloorSpace[place2Y][place2X]==0){
+                        place2=ThreadLocalRandom.current().nextInt(spaces);
+                        place2X=(place2%10);
+                        place2Y=(place2/10);
+                    }
+                    newVal=childFloorSpace[place2Y][place2X];
                     childFloorSpace[yVal][xVal]=newVal;
                     thisMember.addLocation(xVal,yVal,newVal);
                     excessHoles--;
@@ -418,8 +455,9 @@ public class main extends JPanel{
                 }else{
                     excessSpots=spaces-machines;
                 }
+                int randomIndex;
                 while(excessSpots>0) {
-                    int randomIndex = ThreadLocalRandom.current().nextInt(spaces);
+                    randomIndex = ThreadLocalRandom.current().nextInt(spaces);
                     int place1X = (randomIndex % 10);
                     int place1Y = (randomIndex / 10);
                     while (childFloorSpace[place1Y][place1X] == 0) {
@@ -440,24 +478,23 @@ public class main extends JPanel{
             thisMember.addRoom(childFloorSpace);
 
             double totalFitness=0;
+            double totalLikeDistances=0;
             for(int i=0;i<rowAmount;i++){
                 for(int x=0;x<childFloorSpace[i].length;x++){
                     for(int y=0;y<rowAmount;y++){
                         for(int z=0;z<childFloorSpace[y].length;z++){
-                            double curFitnessClose=0;
-                            double curFitnessFar=0;
                             if(i!=y&&x!=z) {
                                 double distance=Math.sqrt((Math.pow((x-z), 2)) + (Math.pow((i-y), 2)));
                                 double flavorDifference=Math.abs(childFloorSpace[i][x]-childFloorSpace[y][z]);
-                                if(flavorDifference==0){
-                                    flavorDifference=.5;
+                                if(flavorDifference<=100&&childFloorSpace[i][x]!=0&&childFloorSpace[y][z]!=0){
+                                    totalFitness+=(1/distance);
                                 }
-                                totalFitness+=distance/flavorDifference;
                             }
                         }
                     }
                 }
             }
+
             //totalFitness+=thisMember.getHashmap().keySet().size()*totalFitness;
             thisMember.changeFitness(totalFitness);
             childrenListSyn.add(thisMember);
@@ -484,11 +521,11 @@ public class main extends JPanel{
             curIndex=selectionListIndex.get();
             selectionListIndex.getAndAdd(1);
             member curMember=lastGen.get(curIndex);
-            int numberOfEntries=(int)curMember.getFitness();
-            System.out.println("current index is: "+curIndex+" Fitness is: "+curMember.getFitness()+" Number of entries: "+numberOfEntries);
+            int numberOfEntries=(int)(curMember.getFitness());
+            //System.out.println("current index is: "+curIndex+" Fitness is: "+curMember.getFitness()+" Number of entries: "+numberOfEntries);
             for(int i=0;i<numberOfEntries;i++){
                 thisMemberCount.add(curMember);
-                //selectionListSyn.add(curMember);
+                selectionListSyn.add(curMember);
             }
             return thisMemberCount;
         };
@@ -496,23 +533,15 @@ public class main extends JPanel{
         for(int i=0;i<300;i++){
             roulette.add(selection);
         }
-        List<Future<List<member>>>allFutures=service.invokeAll(roulette);
-        for (Future<List<member>> allFloor : allFutures) {
-            selectionListSyn.addAll(allFloor.get());
+        service.invokeAll(roulette);
+        member bestMember=selectionListSyn.get(0);
+        for(int i=1;i<selectionListSyn.size();i++){
+            if(selectionListSyn.get(i).getFitness()>bestMember.getFitness()){
+                bestMember=selectionListSyn.get(i);
+            }
         }
-        //service.shutdown();
-        member selectedMember=selectionListSyn.get(ThreadLocalRandom.current().nextInt(0, selectionListSyn.size()));
-        member selectedMemberMate=selectionListSyn.get(ThreadLocalRandom.current().nextInt(0, selectionListSyn.size()));
-        do{
-            selectedMemberMate=selectionListSyn.get(ThreadLocalRandom.current().nextInt(0, selectionListSyn.size()));
-        }while (selectedMember.getFitness()==selectedMemberMate.getFitness());
-        //simple way to just make sure everything gets finished before anything else happens.
-        System.out.println(selectionListSyn.size());
-        String objectReceived= (String) exchanger.exchange(selectedMember);
-        System.out.println(objectReceived);
-        parents.add(selectedMember);
-        parents.add(selectedMemberMate);
-        return parents;
+        String message=(String)exchanger.exchange(bestMember);
+        return selectionListSyn;
     }
 
 
